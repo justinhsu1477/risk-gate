@@ -7,7 +7,7 @@ branding:
 
 inputs:
   github_token:
-    description: 'GitHub token for posting PR comments (use ${{ secrets.GITHUB_TOKEN }})'
+    description: 'GitHub token for posting PR comments (typically secrets.GITHUB_TOKEN)'
     required: true
   gemini_api_key:
     description: 'Gemini API key (one of gemini_api_key or anthropic_api_key required)'
