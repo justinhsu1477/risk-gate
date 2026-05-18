@@ -35,6 +35,24 @@ def _get_workspace() -> str:
     return "."
 
 
+def _trust_workspace() -> None:
+    """Add safe.directory so git accepts the mounted workspace.
+
+    Dockerfile-time `git config --global` writes to /root/.gitconfig but
+    runtime $HOME is /github/home, so we add at runtime instead. Use
+    --system so it works regardless of HOME.
+    """
+    paths = ["/github/workspace", os.environ.get("GITHUB_WORKSPACE", "")]
+    for path in filter(None, paths):
+        try:
+            subprocess.run(
+                ["git", "config", "--system", "--add", "safe.directory", path],
+                capture_output=True, check=False,
+            )
+        except Exception:
+            pass
+
+
 def set_output(name: str, value: str) -> None:
     """Write to GITHUB_OUTPUT file (the modern way to set action outputs)."""
     out_file = os.environ.get("GITHUB_OUTPUT")
@@ -105,6 +123,7 @@ def truncate_diff(diff: str, max_lines: int) -> tuple[str, bool, int]:
 
 
 def main() -> int:
+    _trust_workspace()
     event = load_event()
     pr = event.get("pull_request", {})
 
