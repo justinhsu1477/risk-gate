@@ -13,6 +13,7 @@ permissions:
 jobs:
   risk:
     runs-on: ubuntu-latest
+    timeout-minutes: 5   # safety net — typical run is ~30-60s
     steps:
       - uses: actions/checkout@v4
         with:
