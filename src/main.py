@@ -20,6 +20,21 @@ def gh_input(name: str, default: str = "") -> str:
     return os.environ.get(f"INPUT_{name.upper()}", default)
 
 
+def _get_workspace() -> str:
+    """Find the repo workspace inside the Docker action container.
+
+    In GitHub Docker actions, GITHUB_WORKSPACE env var holds the *host* path
+    (e.g. /home/runner/work/repo/repo) which doesn't exist inside the container.
+    The repo is actually mounted at /github/workspace. Prefer that.
+    """
+    if Path("/github/workspace/.git").exists():
+        return "/github/workspace"
+    ws = os.environ.get("GITHUB_WORKSPACE", "")
+    if ws and Path(ws, ".git").exists():
+        return ws
+    return "."
+
+
 def set_output(name: str, value: str) -> None:
     """Write to GITHUB_OUTPUT file (the modern way to set action outputs)."""
     out_file = os.environ.get("GITHUB_OUTPUT")
@@ -48,7 +63,7 @@ def get_pr_diff(base_sha: str, head_sha: str) -> str:
         result = subprocess.run(
             ["git", "diff", f"{base_sha}...{head_sha}"],
             capture_output=True, text=True, check=True,
-            cwd=os.environ.get("GITHUB_WORKSPACE", "."),
+            cwd=_get_workspace(),
         )
         return result.stdout
     except subprocess.CalledProcessError as e:
@@ -56,11 +71,11 @@ def get_pr_diff(base_sha: str, head_sha: str) -> str:
         # Fallback: diff HEAD against the base branch via fetch
         try:
             subprocess.run(["git", "fetch", "origin", base_sha], check=True,
-                           cwd=os.environ.get("GITHUB_WORKSPACE", "."))
+                           cwd=_get_workspace())
             result = subprocess.run(
                 ["git", "diff", f"origin/{base_sha}...HEAD"],
                 capture_output=True, text=True, check=True,
-                cwd=os.environ.get("GITHUB_WORKSPACE", "."),
+                cwd=_get_workspace(),
             )
             return result.stdout
         except Exception as e2:
@@ -73,7 +88,7 @@ def get_files_changed(base_sha: str, head_sha: str) -> list[str]:
         result = subprocess.run(
             ["git", "diff", "--name-only", f"{base_sha}...{head_sha}"],
             capture_output=True, text=True, check=True,
-            cwd=os.environ.get("GITHUB_WORKSPACE", "."),
+            cwd=_get_workspace(),
         )
         return [f for f in result.stdout.strip().split("\n") if f]
     except subprocess.CalledProcessError:
