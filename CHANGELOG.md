@@ -3,6 +3,46 @@
 All notable changes to AI Risk Gate are documented here.
 Versioning follows [SemVer](https://semver.org/).
 
+## [1.2.0] — 2026-05-18
+
+Three quality-of-life features inspired by patterns seen in
+[tinyhumansai/openhuman](https://github.com/tinyhumansai/openhuman)'s
+production CI setup.
+
+### Added
+
+- **`skip_labels` input** — comma-separated PR labels that exit cleanly
+  without calling the LLM. Useful for `docs,chore,dependencies` PRs.
+  Outputs `risk_label=SKIPPED`.
+- **`mode: weekly_summary`** — pure-aggregation mode (no LLM call) that
+  walks the last N days of PRs, finds risk-gate sticky comments, and
+  opens or updates a `risk-gate-weekly` tracking issue with stats and the
+  high-risk PR list. Drive with a cron schedule.
+- **`summary_days` / `summary_repo` inputs** for the weekly summary mode.
+- **`examples/weekly-summary.yml`** — ready-to-copy weekly cron workflow.
+
+### Changed
+
+- `examples/basic-workflow.yml` and `examples/gated-deploy.yml` now show
+  the recommended `concurrency` block — cancels stale runs on new push.
+
+## [1.0.2] — 2026-05-18
+
+Bugfix for large PRs.
+
+### Fixed
+
+- **JSON parse failure on PRs with many concerns** — bumped Gemini
+  `max_output_tokens` 4096 → 8192 (Flash supports up to 65k). Large PRs
+  (37 files / 4000+ diff lines) were running out of output budget and
+  truncating the JSON mid-token.
+- **`json-repair` fallback** for the residual cases where the LLM emits
+  unescaped newlines / trailing commas inside string values.
+- Log first 800 chars of the raw response on parse failure to aid debug.
+
+Symptom: `JSONDecodeError: Expecting ',' delimiter: line 10 column 6`
+on [invest-pipeline#3](https://github.com/justinhsu1477/invest-pipeline/pull/3).
+
 ## [1.0.1] — 2026-05-18
 
 Bugfixes discovered while wiring the action up to a real private repo

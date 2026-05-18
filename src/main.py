@@ -124,8 +124,35 @@ def truncate_diff(diff: str, max_lines: int) -> tuple[str, bool, int]:
 
 def main() -> int:
     _trust_workspace()
+
+    # weekly_summary mode is an entirely different code path
+    mode = gh_input("mode", "pr_review").lower().strip()
+    if mode == "weekly_summary":
+        from weekly_summary import run_weekly_summary
+        return run_weekly_summary(
+            gh_token=gh_input("github_token") or os.environ.get("GITHUB_TOKEN", ""),
+            repo=gh_input("summary_repo") or os.environ.get("GITHUB_REPOSITORY", ""),
+            days=int(gh_input("summary_days", "7")),
+        )
+
     event = load_event()
     pr = event.get("pull_request", {})
+
+    # Skip if PR has any label in skip_labels
+    skip_labels_raw = gh_input("skip_labels", "").strip()
+    if skip_labels_raw and pr:
+        skip_set = {s.strip().lower() for s in skip_labels_raw.split(",") if s.strip()}
+        pr_labels = {(l.get("name") or "").lower() for l in pr.get("labels", [])}
+        hit = skip_set & pr_labels
+        if hit:
+            label = next(iter(hit))
+            print(f"[main] PR labeled '{label}' is in skip_labels — exiting cleanly")
+            set_output("risk_score", "0")
+            set_output("risk_label", "SKIPPED")
+            set_output("summary", f"Skipped: PR labeled '{label}'")
+            set_output("concerns_json", "[]")
+            set_output("cost_usd", "0.00")
+            return 0
 
     if not pr:
         # Allow local testing via env vars

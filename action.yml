@@ -27,6 +27,22 @@ inputs:
     description: 'Truncate diff at N lines to control token cost. Default: 3000.'
     required: false
     default: '3000'
+  skip_labels:
+    description: 'Comma-separated PR labels that skip the risk check (e.g. "docs,chore,dependencies"). PRs with any matching label exit cleanly with risk_label=SKIPPED.'
+    required: false
+    default: ''
+  mode:
+    description: 'Run mode. "pr_review" (default) scores a single PR. "weekly_summary" aggregates last-week PR scores into a tracking issue (use with a cron schedule).'
+    required: false
+    default: 'pr_review'
+  summary_days:
+    description: 'Days to look back for weekly_summary mode. Default: 7.'
+    required: false
+    default: '7'
+  summary_repo:
+    description: 'Repo to summarize (owner/name). Default: current repo. Only used in weekly_summary mode.'
+    required: false
+    default: ''
 
 outputs:
   risk_score:

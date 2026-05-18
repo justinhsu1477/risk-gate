@@ -11,6 +11,10 @@ permissions:
   pull-requests: write
   deployments: write
 
+concurrency:
+  group: ai-gated-deploy-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   risk:
     runs-on: ubuntu-latest

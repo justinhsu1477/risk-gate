@@ -113,6 +113,10 @@ jobs:
 | `model` | | `gemini-2.5-flash` | `gemini-2.5-flash`, `gemini-2.5-pro`, `claude-sonnet-4-5`, `claude-haiku-4-5` |
 | `fail_threshold` | | `0` | Action fails if score ≥ this (0 = never fail) |
 | `max_diff_lines` | | `3000` | Truncate diff to control cost |
+| `skip_labels` | | `''` | Comma-separated labels that skip the check (`docs,chore,dependencies`) |
+| `mode` | | `pr_review` | `pr_review` (default) or `weekly_summary` |
+| `summary_days` | | `7` | Lookback days for `weekly_summary` mode |
+| `summary_repo` | | (current repo) | Override repo for `weekly_summary` mode |
 
 ## Outputs
 
@@ -145,6 +149,65 @@ The model scores using this rubric (full details in [prompts/risk_score.md](prom
 | 4-6 | MEDIUM | New feature, bug fix touching ≤3 files |
 | 7-8 | HIGH | Schema migration, auth changes, multi-file refactor |
 | 9-10 | CRITICAL | Drops table, exposes secrets, IAM changes |
+
+## Skip docs / chore PRs
+
+Don't waste API cost on cosmetic PRs:
+
+```yaml
+- uses: justinhsu1477/risk-gate@v1
+  with:
+    github_token:   ${{ secrets.GITHUB_TOKEN }}
+    gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+    skip_labels: docs,chore,dependencies
+```
+
+PRs with any of those labels exit cleanly with `risk_label=SKIPPED`.
+
+## Cancel stale runs
+
+Add `concurrency` to your workflow so pushing a new commit cancels the
+in-progress scoring of the previous one:
+
+```yaml
+concurrency:
+  group: risk-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+```
+
+## Weekly summary mode
+
+Pair the per-PR workflow with a weekly aggregation that walks the last 7 days of
+PRs, finds the risk-gate sticky comments, and opens a tracking issue with the
+stats and high-risk list. **No LLM calls** — pure aggregation, so it's free.
+
+```yaml
+# .github/workflows/risk-gate-weekly.yml
+name: AI Risk Gate Weekly Summary
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # Monday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: justinhsu1477/risk-gate@v1
+        with:
+          mode: weekly_summary
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          summary_days: 7
+```
+
+Output: a markdown issue labeled `risk-gate-weekly` showing total PRs,
+average score, distribution, and high-risk PR list. Updates in place each week.
 
 ## Customize the rubric
 

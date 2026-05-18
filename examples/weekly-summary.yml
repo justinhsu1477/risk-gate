@@ -1,0 +1,32 @@
+# Weekly summary mode: aggregates last 7 days of PR risk scores into a
+# tracking issue. Pair this with the per-PR workflow so the team gets a
+# weekly digest.
+
+name: AI Risk Gate Weekly Summary
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # Monday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: risk-gate-weekly
+  cancel-in-progress: false   # let it finish; one summary at a time
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: justinhsu1477/risk-gate@v1
+        with:
+          mode: weekly_summary
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          summary_days: 7
+          # Note: weekly_summary does NOT call any LLM — pure aggregation,
+          # so no gemini/anthropic key is required for this mode.
