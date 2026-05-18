@@ -77,7 +77,23 @@ def extract_json(text: str) -> dict:
     end = text.rfind("}")
     if start < 0 or end <= start:
         raise ValueError(f"No JSON object in LLM response: {text[:200]}")
-    return json.loads(text[start:end + 1])
+    candidate = text[start:end + 1]
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError as e:
+        # LLM JSON output is brittle: unescaped newlines, trailing commas,
+        # truncation mid-token. Fall back to json-repair which handles all of these.
+        try:
+            from json_repair import repair_json
+            repaired = repair_json(candidate, return_objects=True)
+            if isinstance(repaired, dict) and repaired:
+                return repaired
+        except Exception:
+            pass
+        # Surface enough context for the action log to be useful
+        print(f"[risk_scorer] JSON parse failed: {e}", flush=True)
+        print(f"[risk_scorer] raw response (first 800 chars):\n{candidate[:800]}", flush=True)
+        raise
 
 
 # ============ Provider calls ============
@@ -93,7 +109,7 @@ def call_gemini(prompt: str, model: str, api_key: str) -> tuple[str, int, int]:
         prompt,
         generation_config={
             "temperature": 0.2,
-            "max_output_tokens": 4096,
+            "max_output_tokens": 8192,  # large PRs need headroom; Flash supports up to 65k
             "response_mime_type": "application/json",
         },
     )

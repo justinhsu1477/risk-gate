@@ -19,7 +19,8 @@ RUN pip install --no-cache-dir \
     anthropic==0.39.0 \
     requests==2.32.3 \
     pydantic==2.9.2 \
-    jinja2==3.1.4
+    jinja2==3.1.4 \
+    json-repair==0.30.2
 
 COPY src/ /app/src/
 COPY prompts/ /app/prompts/
