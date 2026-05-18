@@ -1,0 +1,45 @@
+name: 'AI Risk Gate'
+description: 'AI-powered risk scoring for pull requests. Scores 1-10 based on diff analysis.'
+author: 'justinhsu1477'
+branding:
+  icon: 'shield'
+  color: 'purple'
+
+inputs:
+  github_token:
+    description: 'GitHub token for posting PR comments (use ${{ secrets.GITHUB_TOKEN }})'
+    required: true
+  gemini_api_key:
+    description: 'Gemini API key (one of gemini_api_key or anthropic_api_key required)'
+    required: false
+  anthropic_api_key:
+    description: 'Anthropic API key (alternative to Gemini)'
+    required: false
+  model:
+    description: 'Model to use. Default: gemini-2.5-flash. Also: claude-sonnet-4-5, claude-haiku-4-5'
+    required: false
+    default: 'gemini-2.5-flash'
+  fail_threshold:
+    description: 'Risk score at or above which this action fails (use to block merge). 0 = never fail.'
+    required: false
+    default: '0'
+  max_diff_lines:
+    description: 'Truncate diff at N lines to control token cost. Default: 3000.'
+    required: false
+    default: '3000'
+
+outputs:
+  risk_score:
+    description: 'Risk score 1-10'
+  risk_label:
+    description: 'LOW / MEDIUM / HIGH / CRITICAL'
+  summary:
+    description: 'Short one-line risk summary'
+  concerns_json:
+    description: 'JSON array of specific concerns'
+  cost_usd:
+    description: 'API cost in USD'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'

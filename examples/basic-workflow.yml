@@ -1,0 +1,27 @@
+# Copy this file to .github/workflows/risk-gate.yml in your repo
+
+name: AI Risk Gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  risk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history for diff
+
+      - uses: justinhsu1477/risk-gate@v1
+        with:
+          github_token:   ${{ secrets.GITHUB_TOKEN }}
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          model: gemini-2.5-flash
+          fail_threshold: 0       # 0 = never fail; set to 8 to block CRITICAL PRs
+          max_diff_lines: 3000

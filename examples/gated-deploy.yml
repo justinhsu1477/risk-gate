@@ -1,0 +1,61 @@
+# Risk-gated deploy: route low-risk PRs to auto-merge, mid-risk to human approval.
+
+name: AI-Gated Deploy
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  deployments: write
+
+jobs:
+  risk:
+    runs-on: ubuntu-latest
+    outputs:
+      score: ${{ steps.gate.outputs.risk_score }}
+      label: ${{ steps.gate.outputs.risk_label }}
+      summary: ${{ steps.gate.outputs.summary }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: gate
+        uses: justinhsu1477/risk-gate@v1
+        with:
+          github_token:   ${{ secrets.GITHUB_TOKEN }}
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+
+  auto-deploy:
+    needs: risk
+    if: needs.risk.outputs.score <= 3
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Auto-deploy (low risk)
+        run: |
+          echo "Risk ${{ needs.risk.outputs.score }} (${{ needs.risk.outputs.label }})"
+          echo "Auto-deploying..."
+          # your deploy commands here, e.g.:
+          # ssh deploy@host "cd /app && git pull && systemctl restart myapp"
+
+  human-approval:
+    needs: risk
+    if: needs.risk.outputs.score >= 4 && needs.risk.outputs.score <= 7
+    runs-on: ubuntu-latest
+    environment: production   # GitHub will require manual approval
+    steps:
+      - name: Deploy after approval
+        run: echo "Approved — deploying mid-risk PR"
+
+  block:
+    needs: risk
+    if: needs.risk.outputs.score >= 8
+    runs-on: ubuntu-latest
+    steps:
+      - name: Block + notify
+        run: |
+          echo "Risk ${{ needs.risk.outputs.score }} — blocking deploy"
+          echo "${{ needs.risk.outputs.summary }}"
+          exit 1   # fail the workflow
